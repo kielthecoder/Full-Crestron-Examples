@@ -1,4 +1,4 @@
-# Full-Crestron-Examples
+# Full Crestron Examples
 
 This repo contains full examples of Crestron systems written in C#.  Hopefully, they'll provide ideas for how to approach A/V systems programming by going beyond SIMPL Windows.
 
