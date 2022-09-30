@@ -9,10 +9,17 @@ namespace P201_Projector_Exam
 {
     internal class UI
     {
-        private List<BasicTriList> _panels;
-
         public event EventHandler<uint> Press;
         public event EventHandler<uint> Release;
+
+        private List<BasicTriList> _panels;
+        public List<BasicTriList> Panels
+        {
+            get
+            {
+                return _panels;
+            }
+        }
 
         public UI()
         {
@@ -84,10 +91,6 @@ namespace P201_Projector_Exam
         {
             switch (sig)
             {
-                case 1: // Screen Up
-                    break;
-                case 2: // Screen Down
-                    break;
                 case 3: // Power Toggle
                     break;
                 case 8: // Start Up Macro
