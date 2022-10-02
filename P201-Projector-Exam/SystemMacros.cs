@@ -8,15 +8,17 @@ namespace P201_Projector_Exam
     internal class SystemMacros
     {
         private UI _ui;
+        private ProjectorControl _proj;
         private ScreenControl _screen;
         private VolumeControl _volume;
 
-        public SystemMacros(UI ui, ScreenControl screen, VolumeControl volume)
+        public SystemMacros(UI ui, ProjectorControl proj, ScreenControl screen, VolumeControl volume)
         {
             _ui = ui;
             _ui.Press += _ui_Press;
             _ui.Release += _ui_Release;
 
+            _proj = proj;
             _screen = screen;
             _volume = volume;
         }
@@ -29,6 +31,9 @@ namespace P201_Projector_Exam
                     CrestronConsole.PrintLine("StartUp Macro running");
                     _ui.SetFeedback(8, true);
 
+                    if (_proj != null)
+                        _proj.TurnOn();
+
                     if (_screen != null)
                         _screen.ScreenDown();
 
@@ -40,8 +45,14 @@ namespace P201_Projector_Exam
                     CrestronConsole.PrintLine("ShutDown Macro running");
                     _ui.SetFeedback(9, true);
 
+                    if (_proj != null)
+                        _proj.TurnOff();
+
                     if (_screen != null)
                         _screen.ScreenUp();
+
+                    if (_volume != null)
+                        _volume.SetMute(true);
 
                     break;
             }

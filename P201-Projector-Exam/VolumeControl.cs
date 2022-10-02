@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading;
 using Crestron.SimplSharpPro;
 
 namespace P201_Projector_Exam
@@ -9,6 +10,7 @@ namespace P201_Projector_Exam
         private Sig _gauge;
 
         private bool _muteOn;
+        private Thread _muteFlash;
 
         public VolumeControl(UI ui, Sig gauge)
         {
@@ -78,7 +80,31 @@ namespace P201_Projector_Exam
         public void SetMute(bool mute)
         {
             _muteOn = mute;
+
+            if (_muteOn)
+            {
+                _muteFlash = new Thread(Flasher);
+                _muteFlash.Start();
+            }
+            else
+            {
+                if (_muteFlash != null)
+                    _muteFlash.Join();
+            }
+
             _ui.SetFeedback(31, _muteOn);
+        }
+
+        public void Flasher()
+        {
+            bool flash = false;
+
+            while (_muteOn)
+            {
+                flash = !flash;
+                _ui.SetFeedback(31, flash);
+                Thread.Sleep(500);
+            }
         }
 
         public void SetPreset(ushort value)
