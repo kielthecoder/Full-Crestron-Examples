@@ -150,30 +150,21 @@ namespace P201_Projector_Exam
 
         private object SerializeDate(object userObj)
         {
-            int pause = 1000;
+            string now = String.Empty;
+            string then = String.Empty;
 
             while (true)
             {
                 // 10/02/2022
-                _ui.SetSerial(1, DateTime.Today.ToShortDateString());
+                now = DateTime.Today.ToShortDateString();
 
-                if (DateTime.Now.Hour < 23)
+                if (!now.Equals(then))
                 {
-                    pause = 1800000; // 30 minutes
-                }
-                else // 11pm
-                {
-                    if (DateTime.Now.Minute < 59)
-                    {
-                        pause = 60000; // 1 minute
-                    }
-                    else // 11:59pm
-                    {
-                        pause = 5000; // 5 seconds
-                    }
+                    _ui.SetSerial(1, now);
+                    then = now;
                 }
 
-                System.Threading.Thread.Sleep(pause);
+                Thread.Sleep(300000); // 5 minutes
             }
         }
 
