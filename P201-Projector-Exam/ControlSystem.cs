@@ -1,5 +1,4 @@
 using System;
-using System.Threading;
 using Crestron.SimplSharp;
 using Crestron.SimplSharp.CrestronIO;
 using Crestron.SimplSharpPro;
@@ -20,7 +19,7 @@ namespace P201_Projector_Exam
         private SystemMacros _macros;
         private ProgrammerInfo _info;
 
-        private System.Threading.Thread _dateRefresh;
+        private Thread _dateRefresh;
 
         public bool SystemOn
         {
@@ -79,7 +78,7 @@ namespace P201_Projector_Exam
         {
             try
             {
-                Crestron.SimplSharpPro.CrestronThread.Thread.MaxNumberOfUserThreads = 20;
+                Thread.MaxNumberOfUserThreads = 20;
 
                 CrestronEnvironment.ProgramStatusEventHandler += ProgramStatusChange;
             }
@@ -132,8 +131,7 @@ namespace P201_Projector_Exam
                 // a PRO2, but 2-series won't run S# programs.
                 _ui.Add(xp);
 
-                _dateRefresh = new System.Threading.Thread(SerializeDate);
-                _dateRefresh.Start();
+                _dateRefresh = new Thread(SerializeDate, null);
             }
             catch (Exception e)
             {
@@ -150,7 +148,7 @@ namespace P201_Projector_Exam
             }
         }
 
-        private void SerializeDate()
+        private object SerializeDate(object userObj)
         {
             int pause = 1000;
 
