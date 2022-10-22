@@ -8,7 +8,7 @@ There was a scope of work document that defined everything that needed to be don
 
 ## Blog Post
 
-I will eventually have a blog post describing my approach to writing this program.
+Following along step-by-step using my blog post here: https://kielthecoder.com/2022/10/22/p201-projector-exam/
 
 ## A Good Warm-Up
 
