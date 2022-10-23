@@ -137,6 +137,9 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="Lobby_TSW-1052.sgd">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="Lobby_TSW-1052.vtp" />
     <None Include="packages.config" />
   </ItemGroup>
