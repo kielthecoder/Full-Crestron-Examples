@@ -8,13 +8,14 @@ using Crestron.SimplSharpPro.Diagnostics;
 using Crestron.SimplSharpPro.DeviceSupport;
 using Crestron.SimplSharpPro.UI;
 
-namespace Central_Control
+namespace CentralControl
 {
     public class ControlSystem : CrestronControlSystem
     {
         private BasicTriListWithSmartObject _tpLobby;
-        private int _sbpgCurrent;
+        
         private Dictionary<int, uint> _sbpgJoin;
+        private int _sbpgCurrent;
 
         public ControlSystem() : base()
         {

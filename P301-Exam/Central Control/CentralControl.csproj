@@ -7,8 +7,8 @@
     <ProjectGuid>{ADB8758D-7E53-455F-812D-1A87791B9479}</ProjectGuid>
     <OutputType>Library</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>Central_Control</RootNamespace>
-    <AssemblyName>Central Control</AssemblyName>
+    <RootNamespace>CentralControl</RootNamespace>
+    <AssemblyName>CentralControl</AssemblyName>
     <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <Deterministic>true</Deterministic>
