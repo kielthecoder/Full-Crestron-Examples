@@ -18,6 +18,7 @@ namespace CentralControl
         private int _sbpgCurrent;
 
         private string _passcodeEntry;
+        private string _userPasscode;
 
         public ControlSystem() : base()
         {
@@ -32,6 +33,9 @@ namespace CentralControl
                 _sbpgJoin[3] = 82;
                 _sbpgJoin[4] = 83;
                 _sbpgJoin[5] = 84;
+
+                // Default passcode
+                _userPasscode = "12345";
             }
             catch (Exception e)
             {
@@ -74,14 +78,36 @@ namespace CentralControl
 
                 _sbpgCurrent = sbpgNext;
 
+                switch (_sbpgCurrent)
+                {
+                    case 1: // Help
+                        break;
+                    case 2: // Routing
+                        break;
+                    case 3: // Display Control
+                        break;
+                    case 4: // Change Password
+                        _tpLobby.StringInput[1].StringValue = "Enter new passcode:";
+                        _passcodeEntry = String.Empty;
+                        break;
+                    case 5: // Shutdown
+                        break;
+                }
+
                 if (_sbpgCurrent != 0)
                     _tpLobby.BooleanInput[_sbpgJoin[_sbpgCurrent]].BoolValue = true;
             }
         }
 
+        private void HideAllSubpages()
+        {
+            foreach (var k in _sbpgJoin.Keys)
+                _tpLobby.BooleanInput[_sbpgJoin[k]].BoolValue = false;
+        }
+
         public void LockPanel()
         {
-            ShowSubpage(0);
+            HideAllSubpages();
 
             _tpLobby.BooleanInput[50].BoolValue = true;
             _tpLobby.StringInput[1].StringValue = "Enter passcode to unlock panel";
@@ -97,9 +123,7 @@ namespace CentralControl
         private void _tpLobby_OnlineStatusChange(GenericBase dev, OnlineOfflineEventArgs args)
         {
             if (args.DeviceOnLine)
-            {
                 LockPanel();
-            }
         }
 
         private void _tpLobby_SigChange(BasicTriList dev, SigEventArgs args)
@@ -150,10 +174,12 @@ namespace CentralControl
                     }
                     else if (args.Sig.Name == "Misc_2") // Unlock
                     {
-                        if (_passcodeEntry == "12345") // TODO: this should not be hard-coded
+                        if (_passcodeEntry == _userPasscode)
                         {
                             _tpLobby.StringInput[1].StringValue = "CORRECT";
+
                             UnlockPanel();
+                            ShowSubpage(2); // Routing
                         }
                         else
                         {
@@ -173,6 +199,35 @@ namespace CentralControl
                             stars += "*";
 
                         _tpLobby.StringInput[1].StringValue = stars;
+                    }
+                }
+            }
+        }
+
+        private void _tpLobby_ChangePasscode(GenericBase dev, SmartObjectEventArgs args)
+        {
+            if (args.Sig.Type == eSigType.Bool)
+            {
+                if (args.Sig.BoolValue)
+                {
+                    if (args.Sig.Name == "Misc_1") // Cancel
+                    {
+                        _tpLobby.StringInput[1].StringValue = "Enter new passcode:";
+                        _passcodeEntry = String.Empty;
+                    }
+                    else if (args.Sig.Name == "Misc_2") // Accept
+                    {
+                        _tpLobby.StringInput[1].StringValue = "Passcode changed!";
+
+                        _userPasscode = _passcodeEntry;
+                        _passcodeEntry = String.Empty;
+                    }
+                    else // 0 - 9
+                    {
+                        if (_passcodeEntry.Length < 20)
+                            _passcodeEntry += args.Sig.Name;
+
+                        _tpLobby.StringInput[1].StringValue = _passcodeEntry;
                     }
                 }
             }
@@ -202,11 +257,6 @@ namespace CentralControl
         private void _tpLobby_Lobby2Controls(GenericBase dev, SmartObjectEventArgs args)
         {
             SmartObjectDebug("Lobby2Controls", args.Sig);
-        }
-
-        private void _tpLobby_ChangePasscode(GenericBase dev, SmartObjectEventArgs args)
-        {
-            SmartObjectDebug("ChangePasscode", args.Sig);
         }
     }
 }
