@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.2.32616.157
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Central Control", "Central Control\Central Control.csproj", "{ADB8758D-7E53-455F-812D-1A87791B9479}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CentralControl", "Central Control\CentralControl.csproj", "{ADB8758D-7E53-455F-812D-1A87791B9479}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Boardroom", "Boardroom\Boardroom.csproj", "{9D10347C-92FE-449A-B4B8-110FFBF9C708}"
 EndProject

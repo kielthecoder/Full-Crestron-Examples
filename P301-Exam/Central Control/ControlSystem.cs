@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Crestron.SimplSharp;
 using Crestron.SimplSharp.CrestronIO;
 using Crestron.SimplSharpPro;
@@ -12,12 +13,22 @@ namespace Central_Control
     public class ControlSystem : CrestronControlSystem
     {
         private BasicTriListWithSmartObject _tpLobby;
+        private int _sbpgCurrent;
+        private Dictionary<int, uint> _sbpgJoin;
 
         public ControlSystem() : base()
         {
             try
             {
                 Thread.MaxNumberOfUserThreads = 20;
+
+                // Map subpage selection items to visibility join numbers
+                _sbpgJoin = new Dictionary<int, uint>();
+                _sbpgJoin[1] = 80;
+                _sbpgJoin[2] = 81;
+                _sbpgJoin[3] = 82;
+                _sbpgJoin[4] = 83;
+                _sbpgJoin[5] = 84;
             }
             catch (Exception e)
             {
@@ -50,6 +61,18 @@ namespace Central_Control
             }
         }
 
+        private void ShowSubpage(int sbpgNext)
+        {
+            if (sbpgNext != _sbpgCurrent)
+            {
+                if (_sbpgCurrent != 0)
+                    _tpLobby.BooleanInput[_sbpgJoin[_sbpgCurrent]].BoolValue = false;
+
+                _sbpgCurrent = sbpgNext;
+                _tpLobby.BooleanInput[_sbpgJoin[_sbpgCurrent]].BoolValue = true;
+            }
+        }
+
         private void _tpLobby_SigChange(BasicTriList dev, SigEventArgs args)
         {
 
@@ -57,18 +80,18 @@ namespace Central_Control
 
         private void SmartObjectDebug(string objName, Sig sig)
         {
-            CrestronConsole.Print("{0}: {1} ", objName, sig.Name);
+            CrestronConsole.Print("{0}: '{1}' ", objName, sig.Name);
 
             switch (sig.Type)
             {
                 case eSigType.Bool:
-                    CrestronConsole.PrintLine("{0}", sig.BoolValue);
+                    CrestronConsole.PrintLine("= {0}", sig.BoolValue);
                     break;
                 case eSigType.UShort:
-                    CrestronConsole.PrintLine("{0}", sig.UShortValue);
+                    CrestronConsole.PrintLine("= {0}", sig.UShortValue);
                     break;
                 case eSigType.String:
-                    CrestronConsole.PrintLine("{0}", sig.StringValue);
+                    CrestronConsole.PrintLine("= '{0}'", sig.StringValue);
                     break;
             }
         }
@@ -80,7 +103,8 @@ namespace Central_Control
 
         private void _tpLobby_SelectionList(GenericBase dev, SmartObjectEventArgs args)
         {
-            SmartObjectDebug("SelectionList", args.Sig);
+            if (args.Sig.Name == "Item Clicked")
+                ShowSubpage((int)args.Sig.UShortValue);
         }
 
         private void _tpLobby_SourceList(GenericBase dev, SmartObjectEventArgs args)
