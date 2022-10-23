@@ -17,6 +17,8 @@ namespace CentralControl
         private Dictionary<int, uint> _sbpgJoin;
         private int _sbpgCurrent;
 
+        private string _passcodeEntry;
+
         public ControlSystem() : base()
         {
             try
@@ -44,6 +46,7 @@ namespace CentralControl
                 _tpLobby = new Tsw1052(0x03, this);
                 _tpLobby.LoadSmartObjects(Path.Combine(Directory.GetApplicationDirectory(), "Lobby_TSW-1052.sgd"));
 
+                _tpLobby.OnlineStatusChange += _tpLobby_OnlineStatusChange;
                 _tpLobby.SigChange += _tpLobby_SigChange;
                 _tpLobby.SmartObjects[1].SigChange += _tpLobby_PasscodeKeypad;
                 _tpLobby.SmartObjects[2].SigChange += _tpLobby_SelectionList;
@@ -70,13 +73,51 @@ namespace CentralControl
                     _tpLobby.BooleanInput[_sbpgJoin[_sbpgCurrent]].BoolValue = false;
 
                 _sbpgCurrent = sbpgNext;
-                _tpLobby.BooleanInput[_sbpgJoin[_sbpgCurrent]].BoolValue = true;
+
+                if (_sbpgCurrent != 0)
+                    _tpLobby.BooleanInput[_sbpgJoin[_sbpgCurrent]].BoolValue = true;
+            }
+        }
+
+        public void LockPanel()
+        {
+            ShowSubpage(0);
+
+            _tpLobby.BooleanInput[50].BoolValue = true;
+            _tpLobby.StringInput[1].StringValue = "Enter passcode to unlock panel";
+
+            _passcodeEntry = String.Empty;
+        }
+
+        public void UnlockPanel()
+        {
+            _tpLobby.BooleanInput[50].BoolValue = false;
+        }
+
+        private void _tpLobby_OnlineStatusChange(GenericBase dev, OnlineOfflineEventArgs args)
+        {
+            if (args.DeviceOnLine)
+            {
+                LockPanel();
             }
         }
 
         private void _tpLobby_SigChange(BasicTriList dev, SigEventArgs args)
         {
-
+            if (args.Sig.Type == eSigType.Bool)
+            {
+                switch (args.Sig.Number)
+                {
+                    case 35: // Lock Panel
+                        if (args.Sig.BoolValue)
+                            LockPanel();
+                        break;
+                    case 36: // Power Off Displays (and also Lock Panel)
+                        if (args.Sig.BoolValue)
+                            LockPanel();
+                        break;
+                }
+            }
         }
 
         private void SmartObjectDebug(string objName, Sig sig)
@@ -99,7 +140,38 @@ namespace CentralControl
 
         private void _tpLobby_PasscodeKeypad(GenericBase dev, SmartObjectEventArgs args)
         {
-            SmartObjectDebug("PasscodeKeypad", args.Sig);
+            if (args.Sig.Type == eSigType.Bool)
+            {
+                if (args.Sig.BoolValue)
+                {
+                    if (args.Sig.Name == "Misc_1") // Reset
+                    {
+                        LockPanel();
+                    }
+                    else if (args.Sig.Name == "Misc_2") // Unlock
+                    {
+                        if (_passcodeEntry == "12345")
+                        {
+                            _tpLobby.StringInput[1].StringValue = "CORRECT";
+                            UnlockPanel();
+                        }
+                        else
+                        {
+                            _tpLobby.StringInput[1].StringValue = "INCORRECT";
+                        }
+
+                        _passcodeEntry = String.Empty;
+                    }
+                    else // 0 - 9
+                    {
+                        if (_passcodeEntry.Length < 20)
+                        {
+                            _passcodeEntry += args.Sig.Name;
+                            _tpLobby.StringInput[1].StringValue = _passcodeEntry;
+                        }
+                    }
+                }
+            }
         }
 
         private void _tpLobby_SelectionList(GenericBase dev, SmartObjectEventArgs args)
