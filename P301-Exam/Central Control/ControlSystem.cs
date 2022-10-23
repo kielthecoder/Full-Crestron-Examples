@@ -150,7 +150,7 @@ namespace CentralControl
                     }
                     else if (args.Sig.Name == "Misc_2") // Unlock
                     {
-                        if (_passcodeEntry == "12345")
+                        if (_passcodeEntry == "12345") // TODO: this should not be hard-coded
                         {
                             _tpLobby.StringInput[1].StringValue = "CORRECT";
                             UnlockPanel();
@@ -165,10 +165,14 @@ namespace CentralControl
                     else // 0 - 9
                     {
                         if (_passcodeEntry.Length < 20)
-                        {
                             _passcodeEntry += args.Sig.Name;
-                            _tpLobby.StringInput[1].StringValue = _passcodeEntry;
-                        }
+
+                        var stars = String.Empty;
+
+                        for (int i = 0; i < _passcodeEntry.Length; i++)
+                            stars += "*";
+
+                        _tpLobby.StringInput[1].StringValue = stars;
                     }
                 }
             }
