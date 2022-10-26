@@ -6,6 +6,11 @@ using Crestron.SimplSharpPro;
 using Crestron.SimplSharpPro.CrestronThread;
 using Crestron.SimplSharpPro.Diagnostics;
 using Crestron.SimplSharpPro.DeviceSupport;
+using Crestron.SimplSharpPro.DM;
+using Crestron.SimplSharpPro.DM.Cards;
+using Crestron.SimplSharpPro.DM.Endpoints;
+using Crestron.SimplSharpPro.DM.Endpoints.Receivers;
+using Crestron.SimplSharpPro.EthernetCommunication;
 using Crestron.SimplSharpPro.UI;
 
 namespace CentralControl
@@ -13,6 +18,9 @@ namespace CentralControl
     public class ControlSystem : CrestronControlSystem
     {
         private BasicTriListWithSmartObject _tpLobby;
+        private Switch _dmSw;
+
+        private BasicTriList _eiscBoardroom;
         
         private Dictionary<int, uint> _sbpgJoin;
         private int _sbpgCurrent;
@@ -47,11 +55,33 @@ namespace CentralControl
         {
             try
             {
+                // Fire alarm is wired to I/O port 1
+                if (this.SupportsDigitalInput)
+                {
+                    this.DigitalInputPorts[1].StateChange += _fireAlarm_StateChange;
+
+                    if (this.DigitalInputPorts[1].Register() != eDeviceRegistrationUnRegistrationResponse.Success)
+                        ErrorLog.Error("Error registering DigitalInput for fire alarm: {0}", this.DigitalInputPorts[1].DeviceRegistrationFailureReason);
+                }
+                else if (this.SupportsVersiport)
+                {
+                    this.VersiPorts[1].SetVersiportConfiguration(eVersiportConfiguration.DigitalInput);
+                    this.VersiPorts[1].VersiportChange += _fireAlarm_VersiportChange;
+
+                    if (this.VersiPorts[1].Register() != eDeviceRegistrationUnRegistrationResponse.Success)
+                        ErrorLog.Error("Error registering Versiport for fire alarm: {0}", this.VersiPorts[1].DeviceRegistrationFailureReason);
+                }
+
+                // TSW-1052 with SmartGraphics extenders
                 _tpLobby = new Tsw1052(0x03, this);
                 _tpLobby.LoadSmartObjects(Path.Combine(Directory.GetApplicationDirectory(), "Lobby_TSW-1052.sgd"));
 
+                // Standard event handlers
                 _tpLobby.OnlineStatusChange += _tpLobby_OnlineStatusChange;
                 _tpLobby.SigChange += _tpLobby_SigChange;
+
+                // SmartGraphics event handlers!  I wish there was a way to reference them by name, but
+                // seems like you have to use the ID they're assigned in VTP.
                 _tpLobby.SmartObjects[1].SigChange += _tpLobby_PasscodeKeypad;
                 _tpLobby.SmartObjects[2].SigChange += _tpLobby_SelectionList;
                 _tpLobby.SmartObjects[3].SigChange += _tpLobby_SourceList;
@@ -62,6 +92,64 @@ namespace CentralControl
 
                 if (_tpLobby.Register() != eDeviceRegistrationUnRegistrationResponse.Success)
                     ErrorLog.Error("Failed to register touchpanel: {0}", _tpLobby.RegistrationFailureReason);
+
+                // DM-MD8x8 (older style chassis)
+                _dmSw = new DmMd8x8(0x10, this);
+
+                if (_dmSw.Register() != eDeviceRegistrationUnRegistrationResponse.Success)
+                    ErrorLog.Error("Failed to register DM switch: {0}", _dmSw.RegistrationFailureReason);
+
+                // This is very poorly documented!
+                // You tell the DM cards which slot they occupy.
+                // Think: slot 1 = outputs 1 & 2
+                //        slot 2 = outputs 3 & 4
+                //        slot 3 = outputs 5 & 6 etc.
+                var slot3 = new Dmc4kCoHdSingle(3, _dmSw);
+
+                // RMC-SCALERs can now be added to the Output after we've created the cards.
+                // We use Outputs[5] and Outputs[6] because those are on slot 3.
+
+                var rmc1 = new DmRmcScalerC(0x14, _dmSw.Outputs[5]);
+
+                if (rmc1.Register() != eDeviceRegistrationUnRegistrationResponse.Success)
+                    ErrorLog.Error("Failed to register DM RMC-SCALER-C: {0}", rmc1.RegistrationFailureReason);
+
+                var rmc2 = new DmRmcScalerC(0x15, _dmSw.Outputs[6]);
+
+                if (rmc2.Register() != eDeviceRegistrationUnRegistrationResponse.Success)
+                    ErrorLog.Error("Failed to register DM RMC-SCALER-C: {0}", rmc2.RegistrationFailureReason);
+
+                // Print a table of inputs and outputs so I know we didn't cause an exception already
+                // Exceptions will be printed to the ErrorLog
+
+                CrestronConsole.PrintLine("DM switcher inputs:");
+
+                foreach (var input in _dmSw.Inputs)
+                {
+                    CrestronConsole.PrintLine("  Card {0} - {1}", input.Number, input.Card);
+
+                    if (input.Endpoint != null)
+                        CrestronConsole.PrintLine("    Endpoint: {0}", input.Endpoint);
+                }
+
+                CrestronConsole.PrintLine("DM switcher outputs:");
+
+                foreach (var output in _dmSw.Outputs)
+                {
+                    CrestronConsole.PrintLine("  Card {0} - {1}", output.Number, output.Card);
+
+                    if (output.Endpoint != null)
+                        CrestronConsole.PrintLine("    Endpoint: {0}", output.Endpoint);
+                }
+
+                // Create the EISC connections to the other rooms.
+                //  Since we're the central controller, we'll create these as EISCServer objects.
+
+                _eiscBoardroom = new EISCServer(0xE1, this);
+                _eiscBoardroom.SigChange += _eiscBoardroom_SigChange;
+
+                if (_eiscBoardroom.Register() != eDeviceRegistrationUnRegistrationResponse.Success)
+                    ErrorLog.Error("Failed to register Boardroom EISC: {0}", _eiscBoardroom.RegistrationFailureReason);
             }
             catch (Exception e)
             {
@@ -120,6 +208,35 @@ namespace CentralControl
             _tpLobby.BooleanInput[50].BoolValue = false;
         }
 
+        public void FireAlarmSet()
+        {
+            _tpLobby.BooleanInput[20].BoolValue = true;
+        }
+
+        public void FireAlarmReset()
+        {
+            _tpLobby.BooleanInput[20].BoolValue = false;
+        }
+
+        private void _fireAlarm_VersiportChange(Versiport input, VersiportEventArgs args)
+        {
+            if (args.Event == eVersiportEvent.DigitalInChange)
+            {
+                if (input.DigitalIn)
+                    FireAlarmSet();
+                else
+                    FireAlarmReset();
+            }
+        }
+
+        private void _fireAlarm_StateChange(DigitalInput input, DigitalInputEventArgs args)
+        {
+            if (args.State)
+                FireAlarmSet();
+            else
+                FireAlarmReset();
+        }
+
         private void _tpLobby_OnlineStatusChange(GenericBase dev, OnlineOfflineEventArgs args)
         {
             if (args.DeviceOnLine)
@@ -160,6 +277,11 @@ namespace CentralControl
                     CrestronConsole.PrintLine("= '{0}'", sig.StringValue);
                     break;
             }
+        }
+
+        private void SerialPortDebug(string portName, string data)
+        {
+            CrestronConsole.PrintLine("{0} received: {1}", portName, data);
         }
 
         private void _tpLobby_PasscodeKeypad(GenericBase dev, SmartObjectEventArgs args)
@@ -257,6 +379,21 @@ namespace CentralControl
         private void _tpLobby_Lobby2Controls(GenericBase dev, SmartObjectEventArgs args)
         {
             SmartObjectDebug("Lobby2Controls", args.Sig);
+        }
+
+        private void _display1_SerialDataRx(ComPort port, ComPortSerialDataEventArgs args)
+        {
+            SerialPortDebug("display1", args.SerialData);
+        }
+
+        private void _display2_SerialDataRx(ComPort port, ComPortSerialDataEventArgs args)
+        {
+            SerialPortDebug("display2", args.SerialData);
+        }
+
+        private void _eiscBoardroom_SigChange(BasicTriList eisc, SigEventArgs args)
+        {
+
         }
     }
 }
